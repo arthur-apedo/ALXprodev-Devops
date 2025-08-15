@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Script: summaryData-0x03
+# Description: Summarizes Pokémon data into a CSV and calculates averages.
+
+INPUT_DIR="pokemon_data"
+OUTPUT_FILE="pokemon_report.csv"
+
+# CSV header
+echo "Name,Height (m),Weight (kg)" > "$OUTPUT_FILE"
+
+# Loop through each JSON file
+for file in "$INPUT_DIR"/*.json; do
+    name=$(jq -r '.name' "$file" | sed 's/.*/\u&/')
+    height_dm=$(jq -r '.height' "$file")   # decimeters
+    weight_hg=$(jq -r '.weight' "$file")   # hectograms
+
+    # Convert units
+    height_m=$(awk "BEGIN {printf \"%.1f\", $height_dm/10}")
+    weight_kg=$(awk "BEGIN {printf \"%.1f\", $weight_hg/10}")
+
+    # Append to CSV
+    echo "$name,$height_m,$weight_kg" >> "$OUTPUT_FILE"
+done
+
+echo "CSV Report generated at: $OUTPUT_FILE"
+echo
+
+# Print CSV contents
+cat "$OUTPUT_FILE"
+echo
+
+# Calculate averages with awk (skip header NR>1)
+awk -F, 'NR>1 {sum_h+=$2; sum_w+=$3; count++} 
+         END {
+             avg_h = sum_h / count;
+             avg_w = sum_w / count;
+             printf "\nAverage Height: %.2f m\n", avg_h;
+             printf "Average Weight: %.2f kg\n", avg_w;
+         }' "$OUTPUT_FILE"
+

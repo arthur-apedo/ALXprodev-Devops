@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Script: batchProcessing-0x04
+# Description: Fetch Pokémon data in parallel using background processes
+
+# Output directory
+mkdir -p pokemon_data
+
+# Pokémon list
+pokemon_list=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+
+# Function to fetch a Pokémon
+fetch_pokemon() {
+    local name="$1"
+    local retries=3
+    local success=0
+
+    for ((i=1; i<=retries; i++)); do
+        echo "Fetching $name (Attempt $i)..."
+        http_status=$(curl -s -o "pokemon_data/${name}.json" -w "%{http_code}" "https://pokeapi.co/api/v2/pokemon/${name}")
+
+        if [ "$http_status" -eq 200 ]; then
+            echo "Saved data to pokemon_data/${name}.json ✅"
+            success=1
+            break
+        else
+            echo "Error fetching $name (HTTP status $http_status). Retrying..."
+            sleep 2
+        fi
+    done
+
+    if [ "$success" -ne 1 ]; then
+        echo "Failed to fetch $name after $retries attempts ❌" >> errors.txt
+    fi
+}
+
+# Launch all fetches in parallel
+for pokemon in "${pokemon_list[@]}"; do
+    fetch_pokemon "$pokemon" &
+done
+
+# Wait for all background jobs to finish
+wait
+
+echo "All Pokémon fetches completed."
+
